@@ -9,7 +9,7 @@ $ErrorActionPreference = "Continue"
 $amp = "&"
 $dtop = "`$top"
 $headers = @{
-    Authorisation = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$PAT"))
+    Authorization = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$PAT"))
 }
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 
@@ -71,18 +71,38 @@ $projectUrl = "https://dev.azure.com/$Organization/_apis/projects?api-version=7.
 $projectResult = Invoke-SafeRestMethod -Uri $projectUrl -Headers $headers
 
 if ($projectResult.Success) {
-    $findings.AccessibleProjects = $projectResult.Data.value | ForEach-Object {
-        @{
-            Name = $_.name
-            Id = $_.id
-            Visibility = $_.visibility
-            State = $_.state
-            Description = $_.description
+    if ($Project) {
+        # Filter to specific project
+        $filteredProjects = $projectResult.Data.value | Where-Object { $_.name -eq $Project }
+        if ($filteredProjects.Count -eq 0) {
+            Write-Host "✗ Project '$Project' not found in accessible projects" -ForegroundColor Red
+            exit 1
         }
-    }
-    Write-Host "✓ Access to $($findings.AccessibleProjects.Count) project(s):" -ForegroundColor Green
-    foreach ($proj in $findings.AccessibleProjects) {
-        Write-Host "  - $($proj.Name) ($($proj.Visibility))" -ForegroundColor Cyan
+        $findings.AccessibleProjects = $filteredProjects | ForEach-Object {
+            @{
+                Name = $_.name
+                Id = $_.id
+                Visibility = $_.visibility
+                State = $_.state
+                Description = $_.description
+            }
+        }
+        Write-Host "✓ Targeting specific project: $Project" -ForegroundColor Green
+    } else {
+        # Show all accessible projects
+        $findings.AccessibleProjects = $projectResult.Data.value | ForEach-Object {
+            @{
+                Name = $_.name
+                Id = $_.id
+                Visibility = $_.visibility
+                State = $_.state
+                Description = $_.description
+            }
+        }
+        Write-Host "✓ Access to $($findings.AccessibleProjects.Count) project(s):" -ForegroundColor Green
+        foreach ($proj in $findings.AccessibleProjects) {
+            Write-Host "  - $($proj.Name) ($($proj.Visibility))" -ForegroundColor Cyan
+        }
     }
 } else {
     Write-Host "✗ Could not enumerate projects: $($projectResult.Error)" -ForegroundColor Red
@@ -262,7 +282,8 @@ foreach ($proj in $findings.AccessibleProjects) {
 
 Write-Host ""
 Write-Host "[7] SCANNING FOR SECRETS IN CODE" -ForegroundColor Yellow
-foreach ($repo in ($findings.RepositoryAccess | Select-Object -First 5)) {
+$reposToScan = if ($Project) { $findings.RepositoryAccess } else { $findings.RepositoryAccess | Select-Object -First 5 }
+foreach ($repo in $reposToScan) {
     $searchUrl = "https://dev.azure.com/$Organization/_apis/search/codesearchresults?api-version=7.1-preview.1"
     $searchBodyJson = @{
         searchText = "password OR token OR api_key OR secret OR connectionstring"
@@ -292,7 +313,8 @@ foreach ($repo in ($findings.RepositoryAccess | Select-Object -First 5)) {
 
 Write-Host ""
 Write-Host "[8] CHECKING BUILD HISTORY AND ARTIFACTS" -ForegroundColor Yellow
-foreach ($proj in ($findings.AccessibleProjects | Select-Object -First 3)) {
+$projectsToCheck = if ($Project) { $findings.AccessibleProjects } else { $findings.AccessibleProjects | Select-Object -First 3 }
+foreach ($proj in $projectsToCheck) {
     $buildHistoryUrl = "https://dev.azure.com/$Organization/$($proj.Name)/_apis/build/builds?api-version=7.1$amp$dtop=10"
     $buildHistoryResult = Invoke-SafeRestMethod -Uri $buildHistoryUrl -Headers $headers
     
@@ -353,6 +375,11 @@ Write-Host ""
 Write-Host "HIGH-RISK FINDINGS:" -ForegroundColor Red
 foreach ($risk in $findings.HighRiskFindings) {
     Write-Host "  • $risk" -ForegroundColor Red
+}
+
+if (-not (Test-Path $OutputPath)) {
+    New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
+    Write-Host "Created output directory: $OutputPath" -ForegroundColor Green
 }
 
 $reportPath = Join-Path $OutputPath "PAT_Security_Assessment_$($Organization)_$timestamp.json"

@@ -1,6 +1,8 @@
 # PAT-Token-Checker
 PAT Token Security Checker - A PowerShell script that analyses Azure DevOps Personal Access Token (PAT) to find its permissions, accessible resources, and security risks across projects, repos, pipelines, and secrets.
 
+![PAT Security Assessment](image1.png)
+
 ## What does it do? 
 
 This script takes a Personal Access Token (PAT) and goes "hmm, what can this token actually access?". It's thorough and will check:
@@ -12,8 +14,8 @@ This script takes a Personal Access Token (PAT) and goes "hmm, what can this tok
 - **Pipeline access** - can it modify build/release pipelines?
 - **Variable groups & secrets** - access to stored secrets 
 - **User enumeration** - can it list other users?
-- **Code scanning** - searches for hardcoded secrets in repos
-- **Build history** - access to build logs and artifacts
+- **Code scanning** - searches for hardcoded secrets in repos (limited to first 5 repositories when not targeting a specific project)
+- **Build history** - access to build logs and artifacts (limited to first 3 projects when not targeting a specific project)
 
 ## Arguments 📝
 
@@ -55,4 +57,8 @@ It's kinda scary how much a single PAT can do, so this script helps you understa
 Perfect for security assessments, incident response, or just satisfying your curiosity about what that random PAT in your config can actually do.
 
 Remember to only run this on tokens you're authorised to test, and maybe don't share the output files around since they contain sensitive info about your Azure DevOps setup.
+
+## Testing
+
+Basic Pester tests are included to verify script behaviour. Run `Invoke-Pester` to execute the test suite.
 
