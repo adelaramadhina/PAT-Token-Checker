@@ -394,12 +394,12 @@ Assessment Date: $(Get-Date)
 PAT Owner: $($findings.PATOwner.DisplayName) ($($findings.PATOwner.EmailAddress))
 
 SUMMARY:
-- Projects Accessible: $($findings.AccessibleProjects.Count)
-- Repositories with Access: $($findings.RepositoryAccess.Count)
-- Service Connections Found: $($findings.ServiceConnections.Count)
-- Pipelines Accessible: $($findings.PipelineAccess.Count)
-- Variable Groups: $($findings.VariableGroups.Count)
-- Users Enumerated: $($findings.UserEnumeration.Count)
+• Projects Accessible: $($findings.AccessibleProjects.Count)
+• Repositories with Access: $($findings.RepositoryAccess.Count)
+• Service Connections Found: $($findings.ServiceConnections.Count)
+• Pipelines Accessible: $($findings.PipelineAccess.Count)
+• Variable Groups: $($findings.VariableGroups.Count)
+• Users Enumerated: $($findings.UserEnumeration.Count)
 
 HIGH-RISK FINDINGS ($($findings.HighRiskFindings.Count) total):
 $($findings.HighRiskFindings | ForEach-Object { "• $_" } | Out-String)
